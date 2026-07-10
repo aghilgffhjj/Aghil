@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مدیریت حسابداری عقیل</title>
     <style>
-        :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --bg: #f3f4f6; }
+        :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --bg: #f3f4f6; --warning: #f59e0b; }
+        * { box-sizing: border-box; }
         body { font-family: Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 0; }
-        .header { background: var(--primary); color: white; padding: 15px; text-align: center; font-weight: bold; }
-        .nav { display: flex; overflow-x: auto; background: white; padding: 10px; gap: 8px; border-bottom: 1px solid #ddd; }
+        .header { background: var(--primary); color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 1.2rem; }
+        .nav { display: flex; overflow-x: auto; background: white; padding: 10px; gap: 8px; border-bottom: 1px solid #ddd; flex-wrap: nowrap; }
         .nav-btn { padding: 8px 12px; background: #eee; border: none; border-radius: 15px; cursor: pointer; white-space: nowrap; }
         .nav-btn.active { background: var(--primary); color: white; }
         .container { padding: 15px; max-width: 500px; margin: auto; }
@@ -16,89 +17,429 @@
         .page.active { display: block; }
         .card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
         .stat-box { padding: 15px; border-radius: 10px; text-align: center; color: white; font-weight: bold; margin-bottom: 10px; }
+        .stat-box.warning { background: var(--warning); }
         input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
         .btn { width: 100%; padding: 10px; border: none; border-radius: 5px; cursor: pointer; background: var(--primary); color: white; font-weight: bold; }
+        .btn-danger { background: var(--danger); }
+        .btn-success { background: var(--success); }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
         th, td { border: 1px solid #eee; padding: 8px; text-align: center; }
+        .small-input { display: inline-block; width: 48%; margin: 2px 1%; }
+        .flex { display: flex; flex-wrap: wrap; gap: 5px; }
+        .badge { background: #eee; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; }
+        .del-btn { background: var(--danger); color: white; border: none; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
+        .role-selector { background: #eef; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-<div class="header">حسابداری هوشمند عقیل</div>
+<div class="header">📊 حسابداری هوشمند عقیل</div>
 <div class="nav">
     <button class="nav-btn active" onclick="openPage('home', this)">🏠 خانه</button>
     <button class="nav-btn" onclick="openPage('exp', this)">💸 هزینه</button>
     <button class="nav-btn" onclick="openPage('inc', this)">💰 درآمد</button>
-    <button class="nav-btn" onclick="openPage('stk', this)">📦 انبار</button>
-    <button class="nav-btn" onclick="openPage('cr', this)">📝 نسیه</button>
+    <button class="nav-btn" onclick="openPage('report', this)">📈 گزارش</button>
+    <button class="nav-btn" onclick="openPage('cr', this)">📝 نسیه/پیش</button>
 </div>
 <div class="container">
-    <div id="home" class="page active">
-        <div class="stat-box" style="background:var(--success)">درآمد امروز: <span id="dI">0</span></div>
-        <div class="stat-box" style="background:var(--danger)">هزینه امروز: <span id="dE">0</span></div>
+
+    <!-- نقش کاربر -->
+    <div class="role-selector">
+        <label>نقش: </label>
+        <select id="roleSelect" onchange="setRole()">
+            <option value="admin">مدیر</option>
+            <option value="staff">همکار</option>
+        </select>
+        <span id="roleStatus" class="badge" style="margin-right:10px;">👤 مدیر</span>
     </div>
+
+    <!-- صفحه خانه -->
+    <div id="home" class="page active">
+        <div class="stat-box" style="background:var(--success)">💰 درآمد امروز: <span id="dI">0</span></div>
+        <div class="stat-box" style="background:var(--danger)">💸 هزینه امروز: <span id="dE">0</span></div>
+        <div class="stat-box warning">📊 سود/زیان امروز: <span id="dP">0</span></div>
+        <div class="card">
+            <h4>گزارش سریع</h4>
+            <button class="btn btn-success" onclick="showDailyReport()">📆 گزارش امروز</button>
+            <button class="btn" onclick="showWeeklyReport()">📅 گزارش هفته</button>
+        </div>
+    </div>
+
+    <!-- صفحه هزینه -->
     <div id="exp" class="page">
         <div class="card">
             <h3>ثبت هزینه</h3>
+            <select id="expType" onchange="toggleExpFields()">
+                <option value="raw">مواد اولیه</option>
+                <option value="other">متفرقه</option>
+            </select>
+            <div id="rawFields">
+                <input type="text" id="eName" placeholder="نام کالا">
+                <input type="number" id="eQty" placeholder="مقدار">
+                <input type="number" id="eWeight" placeholder="وزن (گرم/کیلو)">
+                <input type="date" id="eDate" placeholder="تاریخ خرید">
+            </div>
+            <div id="otherFields" style="display:none;">
+                <input type="text" id="eDesc" placeholder="شرح هزینه متفرقه">
+            </div>
             <input type="number" id="eA" placeholder="مبلغ (تومان)">
-            <button class="btn" onclick="add('e')">ذخیره</button>
+            <button class="btn" onclick="addExpense()">ذخیره هزینه</button>
+        </div>
+        <div class="card">
+            <h4>لیست هزینه‌ها</h4>
+            <table id="expTable"><thead><tr><th>توضیحات</th><th>مبلغ</th><th>تاریخ</th><th>ویرایش</th></tr></thead><tbody></tbody></table>
         </div>
     </div>
+
+    <!-- صفحه درآمد -->
     <div id="inc" class="page">
         <div class="card">
             <h3>ثبت درآمد</h3>
             <input type="number" id="iA" placeholder="مبلغ (تومان)">
-            <button class="btn" onclick="add('i')">ذخیره</button>
+            <input type="date" id="iDate" placeholder="تاریخ درآمد">
+            <input type="number" id="iDays" placeholder="روز کارکرد (تعداد روز)" min="0.5" step="0.5">
+            <button class="btn" onclick="addIncome()">ذخیره درآمد</button>
         </div>
-    </div>
-    <div id="stk" class="page">
         <div class="card">
-            <h3>موجودی انبار</h3>
-            <input type="text" id="sN" placeholder="نام کالا">
-            <input type="number" id="sQ" placeholder="تعداد">
-            <button class="btn" onclick="addS()">افزودن</button>
+            <h4>لیست درآمدها</h4>
+            <table id="incTable"><thead><tr><th>مبلغ</th><th>تاریخ</th><th>روز کارکرد</th><th>ویرایش</th></tr></thead><tbody></tbody></table>
         </div>
-        <div class="card"><table id="sT"><thead><tr><th>کالا</th><th>تعداد</th></tr></thead><tbody></tbody></table></div>
     </div>
+
+    <!-- صفحه گزارش -->
+    <div id="report" class="page">
+        <div class="card">
+            <h3>📊 گزارش سود و زیان</h3>
+            <div id="reportResult"><p>گزارش روزانه / هفتگی</p></div>
+            <button class="btn" onclick="showDailyReport()">📆 امروز</button>
+            <button class="btn" onclick="showWeeklyReport()">📅 هفته جاری</button>
+        </div>
+        <div class="card" id="reportDetail">
+            <h4>جزئیات</h4>
+            <div id="reportContent">انتخاب کنید</div>
+        </div>
+    </div>
+
+    <!-- صفحه نسیه و پیش‌پرداخت -->
     <div id="cr" class="page">
         <div class="card">
-            <h3>لیست نسیه‌ها</h3>
+            <h3>ثبت نسیه (هزینه بالقوه)</h3>
             <input type="text" id="cN" placeholder="نام شخص">
             <input type="number" id="cA" placeholder="مبلغ">
-            <button class="btn" onclick="addC()">ثبت نسیه</button>
+            <button class="btn" onclick="addCredit()">ثبت نسیه</button>
         </div>
-        <div class="card"><table id="cT"><thead><tr><th>شخص</th><th>مبلغ</th></tr></thead><tbody></tbody></table></div>
+        <div class="card">
+            <h3>ثبت پیش‌پرداخت (هزینه بالفعل)</h3>
+            <input type="text" id="pN" placeholder="نام شخص/شرکت">
+            <input type="number" id="pA" placeholder="مبلغ">
+            <button class="btn" onclick="addPrepay()">ثبت پیش‌پرداخت</button>
+        </div>
+        <div class="card">
+            <h4>لیست نسیه‌ها</h4>
+            <table id="creditTable"><thead><tr><th>شخص</th><th>مبلغ</th><th>وضعیت</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="card">
+            <h4>لیست پیش‌پرداخت‌ها</h4>
+            <table id="prepayTable"><thead><tr><th>شخص</th><th>مبلغ</th><th>وضعیت</th></tr></thead><tbody></tbody></table>
+        </div>
     </div>
+
 </div>
+
 <script>
-    let db = JSON.parse(localStorage.getItem('aqDB')) || { e: [], i: [], s: [], c: [] };
-    function save() { localStorage.setItem('aqDB', JSON.stringify(db)); update(); }
+    // ===== داده‌ها =====
+    let db = JSON.parse(localStorage.getItem('aqDB')) || { 
+        expenses: [], 
+        incomes: [], 
+        credits: [], 
+        prepays: [] 
+    };
+    let currentRole = 'admin'; // 'admin' یا 'staff'
+
+    // ===== ذخیره و بارگذاری =====
+    function save() { 
+        localStorage.setItem('aqDB', JSON.stringify(db)); 
+        updateUI(); 
+    }
+
+    function setRole() {
+        currentRole = document.getElementById('roleSelect').value;
+        document.getElementById('roleStatus').innerHTML = currentRole === 'admin' ? '👤 مدیر' : '👤 همکار';
+        // همکار فقط می‌تواند هزینه ثبت کند، بقیه صفحات را قفل می‌کنیم (مخفی یا غیرفعال)
+        const pages = ['home', 'inc', 'report', 'cr'];
+        pages.forEach(id => {
+            const btn = document.querySelector(`.nav-btn[onclick*="${id}"]`);
+            if (btn) {
+                if (currentRole === 'staff' && id !== 'home' && id !== 'exp') {
+                    btn.style.opacity = '0.4';
+                    btn.style.pointerEvents = 'none';
+                } else {
+                    btn.style.opacity = '1';
+                    btn.style.pointerEvents = 'auto';
+                }
+            }
+        });
+        // اگر همکار در صفحه غیرمجاز باشد به خانه ببریم
+        if (currentRole === 'staff') {
+            const activePage = document.querySelector('.page.active');
+            if (activePage && !['home', 'exp'].includes(activePage.id)) {
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                document.getElementById('home').classList.add('active');
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector('.nav-btn[onclick*="home"]').classList.add('active');
+            }
+        }
+        updateUI();
+    }
+
+    // ===== توابع صفحه‌بندی =====
     function openPage(p, b) {
+        if (currentRole === 'staff' && !['home', 'exp'].includes(p)) {
+            alert('همکار فقط دسترسی به ثبت هزینه دارد.');
+            return;
+        }
         document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(x => x.classList.remove('active'));
-        document.getElementById(p).classList.add('active'); b.classList.add('active');
+        document.getElementById(p).classList.add('active'); 
+        if (b) b.classList.add('active');
+        updateUI();
     }
-    function add(t) {
-        let v = document.getElementById(t+'A').value;
-        if(v) { db[t].push({a: parseInt(v), d: new Date().toDateString()}); save(); alert('ثبت شد'); }
+
+    // ===== هزینه =====
+    function toggleExpFields() {
+        const type = document.getElementById('expType').value;
+        document.getElementById('rawFields').style.display = type === 'raw' ? 'block' : 'none';
+        document.getElementById('otherFields').style.display = type === 'other' ? 'block' : 'none';
     }
-    function addS() {
-        let n = document.getElementById('sN').value, q = document.getElementById('sQ').value;
-        if(n && q) { db.s.push({n, q}); save(); }
+
+    function addExpense() {
+        const type = document.getElementById('expType').value;
+        const amount = parseInt(document.getElementById('eA').value);
+        if (!amount) { alert('مبلغ را وارد کنید'); return; }
+        let desc = '';
+        let detail = {};
+        if (type === 'raw') {
+            const name = document.getElementById('eName').value || 'بدون نام';
+            const qty = document.getElementById('eQty').value || '0';
+            const weight = document.getElementById('eWeight').value || '0';
+            const date = document.getElementById('eDate').value || new Date().toISOString().split('T')[0];
+            desc = `مواد: ${name}`;
+            detail = { name, qty, weight, date };
+        } else {
+            desc = document.getElementById('eDesc').value || 'متفرقه';
+            detail = { desc };
+        }
+        const today = new Date().toDateString();
+        db.expenses.push({
+            id: Date.now(),
+            type,
+            desc,
+            amount,
+            date: new Date().toISOString().split('T')[0],
+            dayString: today,
+            detail,
+            createdAt: Date.now()
+        });
+        save();
+        alert('هزینه ثبت شد');
+        document.getElementById('eA').value = '';
+        document.getElementById('eName').value = '';
+        document.getElementById('eQty').value = '';
+        document.getElementById('eWeight').value = '';
+        document.getElementById('eDate').value = '';
+        document.getElementById('eDesc').value = '';
     }
-    function addC() {
-        let n = document.getElementById('cN').value, a = document.getElementById('cA').value;
-        if(n && a) { db.c.push({n, a}); save(); }
+
+    function deleteExpense(id) {
+        if (!confirm('حذف شود؟')) return;
+        db.expenses = db.expenses.filter(e => e.id !== id);
+        save();
     }
-    function update() {
-        let t = new Date().toDateString();
-        document.getElementById('dI').innerText = db.i.filter(x => x.d === t).reduce((a,b)=>a+b.a,0);
-        document.getElementById('dE').innerText = db.e.filter(x => x.d === t).reduce((a,b)=>a+b.a,0);
-        let sH = ''; db.s.forEach(x => sH += `<tr><td>${x.n}</td><td>${x.q}</td></tr>`);
-        document.querySelector('#sT tbody').innerHTML = sH;
-        let cH = ''; db.c.forEach(x => cH += `<tr><td>${x.n}</td><td>${x.a}</td></tr>`);
-        document.querySelector('#cT tbody').innerHTML = cH;
+
+    // ===== درآمد =====
+    function addIncome() {
+        const amount = parseInt(document.getElementById('iA').value);
+        const date = document.getElementById('iDate').value || new Date().toISOString().split('T')[0];
+        const days = parseFloat(document.getElementById('iDays').value) || 1;
+        if (!amount) { alert('مبلغ را وارد کنید'); return; }
+        db.incomes.push({
+            id: Date.now(),
+            amount,
+            date,
+            days,
+            dayString: new Date(date).toDateString(),
+            createdAt: Date.now()
+        });
+        save();
+        alert('درآمد ثبت شد');
+        document.getElementById('iA').value = '';
+        document.getElementById('iDate').value = '';
+        document.getElementById('iDays').value = '';
     }
-    window.onload = update;
+
+    function deleteIncome(id) {
+        if (!confirm('حذف شود؟')) return;
+        db.incomes = db.incomes.filter(i => i.id !== id);
+        save();
+    }
+
+    // ===== نسیه و پیش‌پرداخت =====
+    function addCredit() {
+        const name = document.getElementById('cN').value;
+        const amount = parseInt(document.getElementById('cA').value);
+        if (!name || !amount) { alert('نام و مبلغ را وارد کنید'); return; }
+        db.credits.push({ id: Date.now(), name, amount, status: 'نسیه' });
+        save();
+        alert('ثبت شد');
+        document.getElementById('cN').value = '';
+        document.getElementById('cA').value = '';
+    }
+
+    function addPrepay() {
+        const name = document.getElementById('pN').value;
+        const amount = parseInt(document.getElementById('pA').value);
+        if (!name || !amount) { alert('نام و مبلغ را وارد کنید'); return; }
+        db.prepays.push({ id: Date.now(), name, amount, status: 'پیش‌پرداخت' });
+        save();
+        alert('ثبت شد');
+        document.getElementById('pN').value = '';
+        document.getElementById('pA').value = '';
+    }
+
+    function deleteCredit(id) {
+        if (!confirm('حذف شود؟')) return;
+        db.credits = db.credits.filter(c => c.id !== id);
+        save();
+    }
+
+    function deletePrepay(id) {
+        if (!confirm('حذف شود؟')) return;
+        db.prepays = db.prepays.filter(p => p.id !== id);
+        save();
+    }
+
+    // ===== گزارش‌ها =====
+    function getTodayStr() { return new Date().toDateString(); }
+
+    function getWeekRange() {
+        const now = new Date();
+        const start = new Date(now);
+        start.setDate(now.getDate() - now.getDay()); // شروع هفته (یکشنبه)
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        return { start: start.toDateString(), end: end.toDateString() };
+    }
+
+    function calcProfit(expenses, incomes) {
+        const totalExp = expenses.reduce((s, e) => s + e.amount, 0);
+        const totalInc = incomes.reduce((s, i) => s + i.amount, 0);
+        return totalInc - totalExp;
+    }
+
+    function showDailyReport() {
+        const today = getTodayStr();
+        const exps = db.expenses.filter(e => e.dayString === today);
+        const incs = db.incomes.filter(i => i.dayString === today);
+        const profit = calcProfit(exps, incs);
+        const totalExp = exps.reduce((s, e) => s + e.amount, 0);
+        const totalInc = incs.reduce((s, i) => s + i.amount, 0);
+        document.getElementById('reportContent').innerHTML = `
+            <p><strong>📆 امروز</strong></p>
+            <p>💰 درآمد: ${totalInc.toLocaleString()} تومان</p>
+            <p>💸 هزینه: ${totalExp.toLocaleString()} تومان</p>
+            <p style="color:${profit>=0?'green':'red'};font-weight:bold;">📊 سود/زیان: ${profit.toLocaleString()} تومان</p>
+            <p>تعداد هزینه: ${exps.length} - تعداد درآمد: ${incs.length}</p>
+        `;
+        // به روز رسانی صفحه خانه
+        updateUI();
+    }
+
+    function showWeeklyReport() {
+        const { start, end } = getWeekRange();
+        const exps = db.expenses.filter(e => {
+            const d = new Date(e.date);
+            return d >= new Date(start) && d <= new Date(end);
+        });
+        const incs = db.incomes.filter(i => {
+            const d = new Date(i.date);
+            return d >= new Date(start) && d <= new Date(end);
+        });
+        const profit = calcProfit(exps, incs);
+        const totalExp = exps.reduce((s, e) => s + e.amount, 0);
+        const totalInc = incs.reduce((s, i) => s + i.amount, 0);
+        document.getElementById('reportContent').innerHTML = `
+            <p><strong>📅 هفته جاری (${start} تا ${end})</strong></p>
+            <p>💰 درآمد: ${totalInc.toLocaleString()} تومان</p>
+            <p>💸 هزینه: ${totalExp.toLocaleString()} تومان</p>
+            <p style="color:${profit>=0?'green':'red'};font-weight:bold;">📊 سود/زیان: ${profit.toLocaleString()} تومان</p>
+            <p>تعداد هزینه: ${exps.length} - تعداد درآمد: ${incs.length}</p>
+        `;
+        updateUI();
+    }
+
+    // ===== بروزرسانی UI =====
+    function updateUI() {
+        const today = getTodayStr();
+        // آمار خانه
+        const todayExps = db.expenses.filter(e => e.dayString === today);
+        const todayIncs = db.incomes.filter(i => i.dayString === today);
+        const totalExp = todayExps.reduce((s, e) => s + e.amount, 0);
+        const totalInc = todayIncs.reduce((s, i) => s + i.amount, 0);
+        document.getElementById('dI').innerText = totalInc.toLocaleString();
+        document.getElementById('dE').innerText = totalExp.toLocaleString();
+        document.getElementById('dP').innerText = (totalInc - totalExp).toLocaleString();
+
+        // جدول هزینه‌ها
+        let expHtml = '';
+        db.expenses.slice().reverse().forEach(e => {
+            const desc = e.type === 'raw' ? `${e.detail?.name || ''} (${e.detail?.qty||0} عدد)` : e.desc;
+            expHtml += `<tr>
+                <td>${desc}</td>
+                <td>${e.amount.toLocaleString()}</td>
+                <td>${e.date}</td>
+                <td><button class="del-btn" onclick="deleteExpense(${e.id})">🗑</button></td>
+            </tr>`;
+        });
+        document.querySelector('#expTable tbody').innerHTML = expHtml || '<tr><td colspan="4">هیچ هزینه‌ای ثبت نشده</td></tr>';
+
+        // جدول درآمدها
+        let incHtml = '';
+        db.incomes.slice().reverse().forEach(i => {
+            incHtml += `<tr>
+                <td>${i.amount.toLocaleString()}</td>
+                <td>${i.date}</td>
+                <td>${i.days || 1}</td>
+                <td><button class="del-btn" onclick="deleteIncome(${i.id})">🗑</button></td>
+            </tr>`;
+        });
+        document.querySelector('#incTable tbody').innerHTML = incHtml || '<tr><td colspan="4">هیچ درآمدی ثبت نشده</td></tr>';
+
+        // جدول نسیه
+        let creditHtml = '';
+        db.credits.forEach(c => {
+            creditHtml += `<tr><td>${c.name}</td><td>${c.amount.toLocaleString()}</td><td>${c.status} <button class="del-btn" onclick="deleteCredit(${c.id})">🗑</button></td></tr>`;
+        });
+        document.querySelector('#creditTable tbody').innerHTML = creditHtml || '<tr><td colspan="3">هیچ نسیه‌ای ثبت نشده</td></tr>';
+
+        // جدول پیش‌پرداخت
+        let prepayHtml = '';
+        db.prepays.forEach(p => {
+            prepayHtml += `<tr><td>${p.name}</td><td>${p.amount.toLocaleString()}</td><td>${p.status} <button class="del-btn" onclick="deletePrepay(${p.id})">🗑</button></td></tr>`;
+        });
+        document.querySelector('#prepayTable tbody').innerHTML = prepayHtml || '<tr><td colspan="3">هیچ پیش‌پرداختی ثبت نشده</td></tr>';
+    }
+
+    // ===== مقداردهی اولیه =====
+    window.onload = function() {
+        setRole();
+        updateUI();
+        toggleExpFields();
+        // نمایش گزارش پیش‌فرض
+        showDailyReport();
+    };
+
+    // برای هماهنگی با دکمه‌های گزارش
+    window.showDailyReport = showDailyReport;
+    window.showWeeklyReport = showWeeklyReport;
 </script>
 </body>
 </html>
