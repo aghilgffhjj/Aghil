@@ -1,44 +1,104 @@
-:root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --bg: #f3f4f6; }
-body { font-family: Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 0; }
-.header { background: var(--primary); color: white; padding: 15px; text-align: center; font-weight: bold; }
-.nav { display: flex; overflow-x: auto; background: white; padding: 10px; gap: 8px; border-bottom: 1px solid #ddd; }
-.nav-btn { padding: 8px 12px; background: #eee; border: none; border-radius: 15px; cursor: pointer; white-space: nowrap; }
-.nav-btn.active { background: var(--primary); color: white; }
-.container { padding: 15px; max-width: 500px; margin: auto; }
-.page { display: none; }
-.page.active { display: block; }
-.card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
-.stat-box { padding: 15px; border-radius: 10px; text-align: center; color: white; font-weight: bold; margin-bottom: 10px; }
-input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-.btn { width: 100%; padding: 10px; border: none; border-radius: 5px; cursor: pointer; background: var(--primary); color: white; font-weight: bold; }
-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-th, td { border: 1px solid #eee; padding: 8px; text-align: center; }let db = JSON.parse(localStorage.getItem('aqDB')) || { e: [], i: [], s: [], c: [] };
-function save() { localStorage.setItem('aqDB', JSON.stringify(db)); update(); }
-function openPage(p, b) {
-document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
-document.querySelectorAll('.nav-btn').forEach(x => x.classList.remove('active'));
-document.getElementById(p).classList.add('active'); b.classList.add('active');
-}
-function add(t) {
-let v = document.getElementById(t+'A').value;
-if(v) { db[t].push({a: parseInt(v), d: new Date().toDateString()}); save(); alert('ثبت شد'); }
-}
-function addS() {
-let n = document.getElementById('sN').value, q = document.getElementById('sQ').value;
-if(n && q) { db.s.push({n, q}); save(); }
-}
-function addC() {
-let n = document.getElementById('cN').value, a = document.getElementById('cA').value;
-if(n && a) { db.c.push({n, a}); save(); }
-}
-function update() {
-let t = new Date().toDateString();
-document.getElementById('dI').innerText = db.i.filter(x => x.d === t).reduce((a,b)=>a+b.a,0);
-document.getElementById('dE').innerText = db.e.filter(x => x.d === t).reduce((a,b)=>a+b.a,0);
-let sH = ''; db.s.forEach(x => sH += `{x.n}</td><td>{x.q}`);
-document.querySelector('#sT tbody').innerHTML = sH;
-let cH = ''; db.c.forEach(x => cH += `{x.n}</td><td>{x.a}`);
-document.querySelector('#cT tbody').innerHTML = cH;
-}
-window.onload = update;
-‌
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت حسابداری عقیل</title>
+    <style>
+        :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --bg: #f3f4f6; }
+        body { font-family: Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 0; }
+        .header { background: var(--primary); color: white; padding: 15px; text-align: center; font-weight: bold; }
+        .nav { display: flex; overflow-x: auto; background: white; padding: 10px; gap: 8px; border-bottom: 1px solid #ddd; }
+        .nav-btn { padding: 8px 12px; background: #eee; border: none; border-radius: 15px; cursor: pointer; white-space: nowrap; }
+        .nav-btn.active { background: var(--primary); color: white; }
+        .container { padding: 15px; max-width: 500px; margin: auto; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .stat-box { padding: 15px; border-radius: 10px; text-align: center; color: white; font-weight: bold; margin-bottom: 10px; }
+        input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 10px; border: none; border-radius: 5px; cursor: pointer; background: var(--primary); color: white; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        th, td { border: 1px solid #eee; padding: 8px; text-align: center; }
+    </style>
+</head>
+<body>
+<div class="header">حسابداری هوشمند عقیل</div>
+<div class="nav">
+    <button class="nav-btn active" onclick="openPage('home', this)">🏠 خانه</button>
+    <button class="nav-btn" onclick="openPage('exp', this)">💸 هزینه</button>
+    <button class="nav-btn" onclick="openPage('inc', this)">💰 درآمد</button>
+    <button class="nav-btn" onclick="openPage('stk', this)">📦 انبار</button>
+    <button class="nav-btn" onclick="openPage('cr', this)">📝 نسیه</button>
+</div>
+<div class="container">
+    <div id="home" class="page active">
+        <div class="stat-box" style="background:var(--success)">درآمد امروز: <span id="dI">0</span></div>
+        <div class="stat-box" style="background:var(--danger)">هزینه امروز: <span id="dE">0</span></div>
+    </div>
+    <div id="exp" class="page">
+        <div class="card">
+            <h3>ثبت هزینه</h3>
+            <input type="number" id="eA" placeholder="مبلغ (تومان)">
+            <button class="btn" onclick="add('e')">ذخیره</button>
+        </div>
+    </div>
+    <div id="inc" class="page">
+        <div class="card">
+            <h3>ثبت درآمد</h3>
+            <input type="number" id="iA" placeholder="مبلغ (تومان)">
+            <button class="btn" onclick="add('i')">ذخیره</button>
+        </div>
+    </div>
+    <div id="stk" class="page">
+        <div class="card">
+            <h3>موجودی انبار</h3>
+            <input type="text" id="sN" placeholder="نام کالا">
+            <input type="number" id="sQ" placeholder="تعداد">
+            <button class="btn" onclick="addS()">افزودن</button>
+        </div>
+        <div class="card"><table id="sT"><thead><tr><th>کالا</th><th>تعداد</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div id="cr" class="page">
+        <div class="card">
+            <h3>لیست نسیه‌ها</h3>
+            <input type="text" id="cN" placeholder="نام شخص">
+            <input type="number" id="cA" placeholder="مبلغ">
+            <button class="btn" onclick="addC()">ثبت نسیه</button>
+        </div>
+        <div class="card"><table id="cT"><thead><tr><th>شخص</th><th>مبلغ</th></tr></thead><tbody></tbody></table></div>
+    </div>
+</div>
+<script>
+    let db = JSON.parse(localStorage.getItem('aqDB')) || { e: [], i: [], s: [], c: [] };
+    function save() { localStorage.setItem('aqDB', JSON.stringify(db)); update(); }
+    function openPage(p, b) {
+        document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(x => x.classList.remove('active'));
+        document.getElementById(p).classList.add('active'); b.classList.add('active');
+    }
+    function add(t) {
+        let v = document.getElementById(t+'A').value;
+        if(v) { db[t].push({a: parseInt(v), d: new Date().toDateString()}); save(); alert('ثبت شد'); }
+    }
+    function addS() {
+        let n = document.getElementById('sN').value, q = document.getElementById('sQ').value;
+        if(n && q) { db.s.push({n, q}); save(); }
+    }
+    function addC() {
+        let n = document.getElementById('cN').value, a = document.getElementById('cA').value;
+        if(n && a) { db.c.push({n, a}); save(); }
+    }
+    function update() {
+        let t = new Date().toDateString();
+        document.getElementById('dI').innerText = db.i.filter(x => x.d === t).reduce((a,b)=>a+b.a,0);
+        document.getElementById('dE').innerText = db.e.filter(x => x.d === t).reduce((a,b)=>a+b.a,0);
+        let sH = ''; db.s.forEach(x => sH += `<tr><td>${x.n}</td><td>${x.q}</td></tr>`);
+        document.querySelector('#sT tbody').innerHTML = sH;
+        let cH = ''; db.c.forEach(x => cH += `<tr><td>${x.n}</td><td>${x.a}</td></tr>`);
+        document.querySelector('#cT tbody').innerHTML = cH;
+    }
+    window.onload = update;
+</script>
+</body>
+</html>
