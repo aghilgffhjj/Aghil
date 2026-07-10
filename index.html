@@ -1,162 +1,17 @@
-هوش مصنوعی: این بار کد را در یک کادر جدید و کاملاً مرتب می‌فرستم. 
 
-**یادآوری مهم:** 
-۱. از اولین خط (`<!DOCTYPE html>`) تا آخرین خط (`</html>`) را کپی کن.
-۲. در گیت‌هاب، هر چه در فایل `index.html` هست را پاک کن و این را جایگزین کن.
-
-```html
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مدیریت حسابداری و انبار</title>
-    <style>
-        :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --bg: #f3f4f6; }
-        body { font-family: Tahoma, sans-serif; background: var(--bg); margin: 0; color: #333; }
-        .header { background: var(--primary); color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 18px; }
-        .nav { display: flex; overflow-x: auto; background: white; padding: 10px; gap: 8px; border-bottom: 1px solid #ddd; }
-        .nav-btn { padding: 8px 12px; background: #eee; border: none; border-radius: 15px; cursor: pointer; white-space: nowrap; font-size: 13px; }
-        .nav-btn.active { background: var(--primary); color: white; }
-        .container { padding: 15px; max-width: 500px; margin: auto; }
-        .page { display: none; }
-        .page.active { display: block; }
-        .card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .stat-box { padding: 15px; border-radius: 10px; text-align: center; color: white; font-weight: bold; }
-        .form-group { margin-bottom: 12px; }
-        label { display: block; font-size: 12px; margin-bottom: 4px; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        .btn { width: 100%; padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; background: var(--primary); color: white; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    </style>
-</head>
-<body>
-
-<div class="header" id="bizTitle">مدیریت حسابداری و انبار</div>
-<div class="nav">
-    <button class="nav-btn active" onclick="openPage('home', this)">🏠 خانه</button>
-    <button class="nav-btn" onclick="openPage('exp', this)">💸 هزینه</button>
-    <button class="nav-btn" onclick="openPage('inc', this)">💰 درآمد</button>
-    <button class="nav-btn" onclick="openPage('stock', this)">📦 انبار</button>
-    <button class="nav-btn" onclick="openPage('credit', this)">📝 نسیه</button>
-    <button class="nav-btn" onclick="openPage('rep', this)">📈 گزارش</button>
-    <button class="nav-btn" onclick="openPage('adm', this)">⚙️ مدیر</button>
-</div>
-
-<div class="container">
-    <div id="home" class="page active">
-        <div class="grid">
-            <div class="stat-box" style="background:var(--success)">درآمد امروز<br><span id="dInc">0</span></div>
-            <div class="stat-box" style="background:var(--danger)">هزینه امروز<br><span id="dExp">0</span></div>
-        </div>
-        <div class="stat-box" style="background:#8b5cf6; margin-top:10px">سود امروز<br><span id="dProf">0</span></div>
-    </div>
-
-    <div id="exp" class="page">
-        <div class="card">
-            <h3>ثبت هزینه</h3>
-            <div class="form-group"><label>نوع</label><select id="exT"><option>مواد اولیه</option><option>متفرقه</option><option>نسیه</option></select></div>
-            <div class="form-group"><label>مبلغ</label><input type="number" id="exA"></div>
-            <button class="btn" onclick="add('exp')">ذخیره هزینه</button>
-        </div>
-    </div>
-
-    <div id="inc" class="page">
-        <div class="card">
-            <h3>ثبت درآمد</h3>
-
-هوش مصنوعی:             <div class="form-group"><label>نوع</label><select id="inT"><option>فروش</option><option>پیش پرداخت</option></select></div>
-            <div class="form-group"><label>مبلغ</label><input type="number" id="inA"></div>
-            <button class="btn" onclick="add('inc')">ذخیره درآمد</button>
-        </div>
-    </div>
-
-    <div id="stock" class="page">
-        <div class="card">
-            <h3>افزودن کالا</h3>
-            <input type="text" id="stN" placeholder="نام کالا" style="margin-bottom:10px">
-            <input type="number" id="stQ" placeholder="تعداد" style="margin-bottom:10px">
-            <button class="btn" onclick="addS()">ثبت در انبار</button>
-        </div>
-        <div class="card"><table id="stT"><thead><tr><th>کالا</th><th>مقدار</th></tr></thead><tbody></tbody></table></div>
-    </div>
-
-    <div id="credit" class="page">
-        <div class="card">
-            <h3>ثبت نسیه</h3>
-            <input type="text" id="crN" placeholder="نام شخص" style="margin-bottom:10px">
-            <input type="number" id="crA" placeholder="مبلغ" style="margin-bottom:10px">
-            <button class="btn" onclick="addC()">ثبت نسیه</button>
-        </div>
-        <div class="card"><table id="crT"><thead><tr><th>شخص</th><th>مبلغ</th></tr></thead><tbody></tbody></table></div>
-    </div>
-
-    <div id="rep" class="page">
-        <div class="card">
-            <h3>گزارش کلی</h3>
-            <div id="repR"></div>
-        </div>
-    </div>
-
-    <div id="adm" class="page">
-        <div class="card">
-            <h3>تنظیمات مدیر</h3>
-            <button class="btn" style="background:red" onclick="clearData()">پاکسازی کل داده‌ها</button>
-        </div>
-    </div>
-</div>
-
-<script>
-    let db = JSON.parse(localStorage.getItem('accDB')) || { exp: [], inc: [], stock: [], credit: [] };
-    function save() { localStorage.setItem('accDB', JSON.stringify(db)); update(); }
-
-    function openPage(id, btn) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        btn.classList.add('active');
-        if(id === 'rep') calcRep();
-    }
-
-    function add(type) {
-        if(type === 'exp') {
-            let a = document.getElementById('exA').value;
-            if(!a) return;
-            db.exp.push({ amt: parseInt(a), date: new Date().toDateString() });
-        } else {
-            let a = document.getElementById('inA').value;
-            if(!a) return;
-            db.inc.push({ amt: parseInt(a), date: new Date().toDateString() });
-        }
-        save(); alert('ثبت شد');
-    }
-
-    function addS() {
-        let n = document.getElementById('stN').value; let q = document.getElementById('stQ').value;
-        if(n && q) { db.stock.push({name: n, qty: q}); save(); }
-    }
-
-    function addC() {
-        let n = document.getElementById('crN').value; let a = document.getElementById('crA').value;
-        if(n && a) { db.credit.push({name: n, amt: a}); save(); }
-    }
-
-    function calcRep() {
-        let ti = db.inc.reduce((a,b)=> a + b.amt, 0);
-        let te = db.exp.reduce((a,b)=> a + b.amt, 0);
-        document.getElementById('repR').innerHTML = `کل درآمد: ${ti} <br> کل هزینه: ${te} <br> سود خالص: ${ti-te}`;
-    }
-
-    function update() {
-        let t = new Date().toDateString();
-        let di = db.inc.filter(i => i.date === t).reduce((a,b)=> a+b.amt, 0);
-        let de = db.exp.filter(e => e.date === t).reduce((a,b)=> a+b.amt, 0);
-        document.getElementById('dInc').innerText = di;
-        document.getElementById('dExp').innerText = de;
-        document.getElementById('dProf').innerText = di - de;
-        
-        let sT = ''; db.stock.forEach(s => sT += `<tr><td>${s.name}</td><td>${s.qty}</td></tr>`);
-        document.querySelector('#stT tbody').innerHTML = sT;
-        
+مدیریت حسابداری عقیل
+:root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --bg: #f3f4f6; }
+body { font-family: Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 0; }
+.header { background: var(--primary); color: white; padding: 15px; text-align: center; font-weight: bold; }
+.nav { display: flex; overflow-x: auto; background: white; padding: 10px; gap: 8px; border-bottom: 1px solid #ddd; }
+.nav-btn { padding: 8px 12px; background: #eee; border: none; border-radius: 15px; cursor: pointer; white-space: nowrap; }
+.nav-btn.active { background: var(--primary); color: white; }
+.container { padding: 15px; max-width: 500px; margin: auto; }
+.page { display: none; }
+.page.active { display: block; }
+.card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
+.stat-box { padding: 15px; border-radius: 10px; text-align: center; color: white; font-weight: bold; margin-bottom: 10px; }
+input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+.btn { width: 100%; padding: 10px; border: none; border-radius: 5px; cursor: pointer; background: var(--primary); color: white; font-weight: bold; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+th, td { border: 1px solid #eee; padding: 8px; text-align: center; }
