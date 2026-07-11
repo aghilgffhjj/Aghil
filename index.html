@@ -65,6 +65,7 @@
         .cart-item-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
         .cart-total { font-weight: bold; font-size: 1.2em; color: var(--primary); }
         .section-title { font-weight: bold; margin: 10px 0 5px; color: #555; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        .empty-cart { text-align: center; color: #888; padding: 10px; }
         @media (max-width: 480px) { .material-row { flex-direction: column; } .material-row input, .material-row select { width: 100%; } .customer-order-card { flex-wrap: wrap; gap: 8px; } }
     </style>
 </head>
@@ -436,7 +437,6 @@
                 btn.classList.remove('disabled');
             }
         });
-        // دکمه منو فقط برای مدیر
         const menuBtn = document.querySelector('.nav-btn[onclick*="menu"]');
         if (menuBtn) {
             if (isAdmin) {
@@ -549,6 +549,13 @@
         const container = document.getElementById('orderMenuList');
         let html = '';
 
+        if (db.products.length === 0 && db.extras.length === 0) {
+            html = '<p style="text-align:center;color:#888;padding:20px;">⚠️ هیچ محصولی در منو ثبت نشده است. لطفاً توسط مدیر منو تکمیل شود.</p>';
+            container.innerHTML = html;
+            updateCartUI();
+            return;
+        }
+
         // محصولات اصلی
         html += `<div class="section-title">📋 محصولات</div>`;
         db.products.forEach(p => {
@@ -569,27 +576,29 @@
             `;
         });
 
-        // اضافه‌های منو (نون، پنیر، فلافل، سس‌ها)
-        html += `<div class="section-title">🧂 اضافه‌ها</div>`;
-        db.extras.forEach(e => {
-            const inCart = cart.find(c => c.productId === e.id && c.isExtra);
-            const qty = inCart ? inCart.qty : 0;
-            html += `
-                <div class="customer-order-card" style="background:#f8f9fa;">
-                    <div class="item-info">
-                        <div class="item-name">${e.name}</div>
-                        <div class="item-price">+ ${e.price.toLocaleString()} تومان</div>
+        // اضافه‌های منو
+        if (db.extras.length > 0) {
+            html += `<div class="section-title">🧂 اضافه‌ها</div>`;
+            db.extras.forEach(e => {
+                const inCart = cart.find(c => c.productId === e.id && c.isExtra);
+                const qty = inCart ? inCart.qty : 0;
+                html += `
+                    <div class="customer-order-card" style="background:#f8f9fa;">
+                        <div class="item-info">
+                            <div class="item-name">${e.name}</div>
+                            <div class="item-price">+ ${e.price.toLocaleString()} تومان</div>
+                        </div>
+                        <div class="item-qty">
+                            <button class="qty-btn-minus" onclick="changeQty(${e.id}, -1, true)">−</button>
+                            <span class="qty-num">${qty}</span>
+                            <button class="qty-btn-plus" onclick="changeQty(${e.id}, 1, true)">+</button>
+                        </div>
                     </div>
-                    <div class="item-qty">
-                        <button class="qty-btn-minus" onclick="changeQty(${e.id}, -1, true)">−</button>
-                        <span class="qty-num">${qty}</span>
-                        <button class="qty-btn-plus" onclick="changeQty(${e.id}, 1, true)">+</button>
-                    </div>
-                </div>
-            `;
-        });
+                `;
+            });
+        }
 
-        container.innerHTML = html || '<p>هیچ محصولی در منو ثبت نشده</p>';
+        container.innerHTML = html;
         updateCartUI();
     }
 
@@ -620,15 +629,19 @@
         const container = document.getElementById('cartItems');
         let html = '';
         let total = 0;
-        cart.forEach(c => {
-            const subtotal = c.price * c.qty;
-            total += subtotal;
-            html += `<div class="cart-item-row">
-                <span>${c.name} × ${c.qty}</span>
-                <span>${subtotal.toLocaleString()} تومان</span>
-            </div>`;
-        });
-        container.innerHTML = html || '<p>سبد خرید خالی است</p>';
+        if (cart.length === 0) {
+            html = '<div class="empty-cart">🛒 سبد خرید خالی است</div>';
+        } else {
+            cart.forEach(c => {
+                const subtotal = c.price * c.qty;
+                total += subtotal;
+                html += `<div class="cart-item-row">
+                    <span>${c.name} × ${c.qty}</span>
+                    <span>${subtotal.toLocaleString()} تومان</span>
+                </div>`;
+            });
+        }
+        container.innerHTML = html;
         document.getElementById('cartTotal').innerText = total.toLocaleString();
     }
 
