@@ -29,8 +29,6 @@
         .btn-danger { background: var(--danger); }
         .btn-success { background: var(--success); }
         .btn-sm { padding: 5px 10px; width: auto; font-size: 12px; }
-        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
-        .btn-outline:hover { background: var(--primary); color: white; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
         th, td { border: 1px solid #eee; padding: 8px; text-align: center; }
         .del-btn { background: var(--danger); color: white; border: none; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
@@ -49,18 +47,19 @@
         .exp-header { background: #e3f2fd; padding: 12px; border-radius: 8px; margin-bottom: 10px; border-right: 4px solid var(--primary); }
         .exp-header .total { font-size: 1.3em; color: var(--primary); font-weight: bold; }
         .persian-date { color: #666; font-size: 0.9em; }
-        .order-card { background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-        .order-card .item-name { font-weight: bold; font-size: 1.1em; }
-        .order-card .item-price { color: var(--primary); font-weight: bold; }
-        .order-card .qty-control { display: flex; align-items: center; gap: 8px; }
-        .order-card .qty-control button { background: #eee; border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 16px; cursor: pointer; }
-        .order-card .qty-control button:hover { background: #ddd; }
-        .order-card .qty-control span { font-weight: bold; min-width: 24px; text-align: center; }
+        
+        /* ===== استایل سفارش مشتری ===== */
+        .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+        .product-card { background: white; border: 2px solid #e0e0e0; border-radius: 12px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .product-card:hover { transform: scale(1.02); border-color: var(--primary); }
+        .product-card.selected { border-color: var(--success); background: #e8f5e9; box-shadow: 0 0 10px rgba(34,197,94,0.3); }
+        .product-card .name { font-weight: bold; font-size: 1em; }
+        .product-card .price { color: var(--primary); font-weight: bold; font-size: 0.9em; }
+        .product-card .qty-badge { background: var(--primary); color: white; border-radius: 50%; padding: 2px 8px; font-size: 0.8em; display: inline-block; margin-top: 5px; }
         .cart-summary { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 15px; }
         .cart-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
         .cart-total { font-weight: bold; font-size: 1.2em; color: var(--primary); }
-        .menu-management { border: 2px solid var(--primary); }
-        @media (max-width: 480px) { .material-row { flex-direction: column; } .material-row input, .material-row select { width: 100%; } }
+        @media (max-width: 480px) { .product-grid { grid-template-columns: 1fr 1fr; } .material-row { flex-direction: column; } .material-row input, .material-row select { width: 100%; } }
     </style>
 </head>
 <body>
@@ -87,12 +86,12 @@
     <div class="nav">
         <button class="nav-btn active" onclick="openPage('home', this)">🏠 خانه</button>
         <button class="nav-btn" onclick="openPage('orders', this)">🛒 سفارش</button>
-        <button class="nav-btn" onclick="openPage('menu', this)">📋 منو</button>
         <button class="nav-btn" onclick="openPage('exp', this)">💸 هزینه</button>
         <button class="nav-btn" onclick="openPage('inc', this)">💰 درآمد</button>
         <button class="nav-btn" onclick="openPage('inventory', this)">📦 انبار</button>
         <button class="nav-btn" onclick="openPage('report', this)">📈 گزارش</button>
         <button class="nav-btn" onclick="openPage('cr', this)">📝 نسیه/پیش</button>
+        <button class="nav-btn" onclick="openPage('menu', this)">📋 منو</button>
         <button class="nav-btn" onclick="openPage('settings', this)">⚙️ تنظیمات</button>
     </div>
     <div class="container">
@@ -115,15 +114,14 @@
             </div>
         </div>
 
-        <!-- صفحه سفارش مشتری (با منو برای انتخاب) -->
+        <!-- صفحه سفارش مشتری (با انتخاب با لمس) -->
         <div id="orders" class="page">
             <div class="card">
                 <h3>🛒 ثبت سفارش مشتری</h3>
                 <input type="text" id="customerName" placeholder="نام مشتری">
                 
-                <div style="max-height:400px;overflow-y:auto;margin:10px 0;border:1px solid #eee;border-radius:8px;padding:8px;">
-                    <div id="menuOrderList"></div>
-                </div>
+                <!-- نمایش محصولات به صورت کارت‌های قابل لمس -->
+                <div class="product-grid" id="productGrid"></div>
                 
                 <!-- سبد خرید -->
                 <div class="cart-summary" id="cartSummary">
@@ -142,7 +140,7 @@
 
         <!-- صفحه منو (فقط مدیر) -->
         <div id="menu" class="page">
-            <div class="card menu-management">
+            <div class="card" style="border:2px solid var(--primary);">
                 <h3>📋 مدیریت منو (فقط مدیر)</h3>
                 <div style="background:#e3f2fd;padding:10px;border-radius:8px;margin-bottom:10px;">
                     <h5>➕ افزودن محصول جدید</h5>
@@ -187,7 +185,6 @@
 
                 <h4>🧾 ریز مواد اولیه</h4>
                 <div id="materialItems">
-                    <!-- مواد به صورت فشرده -->
                     <div class="material-row"><input type="text" value="گوجه فرنگی" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_گوجه_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_گوجه_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="گرم">گرم</option><option value="بسته">بسته</option></select><input type="number" id="mat_گوجه_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_گوجه_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
                     <div class="material-row"><input type="text" value="خیار سبز" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_خیار_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_خیار_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_خیار_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_خیار_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
                     <div class="material-row"><input type="text" value="کلم سفید" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_کلم_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_کلم_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="عدد">عدد</option></select><input type="number" id="mat_کلم_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_کلم_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
@@ -433,13 +430,13 @@
                 btn.classList.remove('disabled');
             }
         });
-        // صفحه منو فقط برای مدیر
-        const menuPage = document.getElementById('menu');
-        if (menuPage) {
+        // صفحه منو فقط برای مدیر (با مخفی کردن کامل)
+        const menuBtn = document.querySelector('.nav-btn[onclick*="menu"]');
+        if (menuBtn) {
             if (isAdmin) {
-                menuPage.style.display = 'block';
+                menuBtn.style.display = 'inline-block';
             } else {
-                menuPage.style.display = 'none';
+                menuBtn.style.display = 'none';
             }
         }
         if (currentRole === 'staff') {
@@ -541,24 +538,20 @@
         save();
     }
 
-    // ===== سفارش مشتری =====
-    function renderMenuForOrder() {
-        const container = document.getElementById('menuOrderList');
+    // ===== سفارش مشتری با لمس =====
+    function renderProductGrid() {
+        const container = document.getElementById('productGrid');
         let html = '';
+        // محصولات اصلی
         db.products.forEach(p => {
             const inCart = cart.find(c => c.productId === p.id && !c.isExtra);
             const qty = inCart ? inCart.qty : 0;
+            const selected = qty > 0 ? 'selected' : '';
             html += `
-                <div class="order-card">
-                    <div>
-                        <div class="item-name">${p.name}</div>
-                        <div class="item-price">+ ${p.price.toLocaleString()} تومان</div>
-                    </div>
-                    <div class="qty-control">
-                        <button onclick="changeCartQty(${p.id}, -1, false)">−</button>
-                        <span>${qty}</span>
-                        <button onclick="changeCartQty(${p.id}, 1, false)">+</button>
-                    </div>
+                <div class="product-card ${selected}" onclick="toggleProduct(${p.id}, false)">
+                    <div class="name">${p.name}</div>
+                    <div class="price">${p.price.toLocaleString()} تومان</div>
+                    ${qty > 0 ? `<div class="qty-badge">${qty}</div>` : ''}
                 </div>
             `;
         });
@@ -566,17 +559,12 @@
         db.extras.forEach(e => {
             const inCart = cart.find(c => c.productId === e.id && c.isExtra);
             const qty = inCart ? inCart.qty : 0;
+            const selected = qty > 0 ? 'selected' : '';
             html += `
-                <div class="order-card" style="background:#f5f5f5;">
-                    <div>
-                        <div class="item-name">${e.name}</div>
-                        <div class="item-price">+ ${e.price.toLocaleString()} تومان</div>
-                    </div>
-                    <div class="qty-control">
-                        <button onclick="changeCartQty(${e.id}, -1, true)">−</button>
-                        <span>${qty}</span>
-                        <button onclick="changeCartQty(${e.id}, 1, true)">+</button>
-                    </div>
+                <div class="product-card ${selected}" style="background:#f5f5f5;" onclick="toggleProduct(${e.id}, true)">
+                    <div class="name">${e.name}</div>
+                    <div class="price">${e.price.toLocaleString()} تومان</div>
+                    ${qty > 0 ? `<div class="qty-badge">${qty}</div>` : ''}
                 </div>
             `;
         });
@@ -584,14 +572,13 @@
         updateCartUI();
     }
 
-    function changeCartQty(productId, delta, isExtra = false) {
-        let item = cart.find(c => c.productId === productId && c.isExtra === isExtra);
+    function toggleProduct(productId, isExtra = false) {
+        const item = cart.find(c => c.productId === productId && c.isExtra === isExtra);
         if (item) {
-            item.qty += delta;
-            if (item.qty <= 0) {
-                cart = cart.filter(c => !(c.productId === productId && c.isExtra === isExtra));
-            }
-        } else if (delta > 0) {
+            // اگر قبلا انتخاب شده بود، حذفش کن
+            cart = cart.filter(c => !(c.productId === productId && c.isExtra === isExtra));
+        } else {
+            // اضافه کردن به سبد
             let name, price;
             if (isExtra) {
                 const extra = db.extras.find(e => e.id === productId);
@@ -604,7 +591,7 @@
                 cart.push({ productId, name, price, qty: 1, isExtra });
             }
         }
-        renderMenuForOrder();
+        renderProductGrid();
     }
 
     function updateCartUI() {
@@ -652,7 +639,7 @@
         save();
         alert('✅ سفارش با موفقیت ثبت شد');
         document.getElementById('customerName').value = '';
-        renderMenuForOrder();
+        renderProductGrid();
         updateUI();
     }
 
@@ -1116,7 +1103,7 @@
         const totalAmount = parseInt(document.getElementById('expTotalAmount').value) || 0;
         document.getElementById('expTotalDisplay').innerText = totalAmount.toLocaleString();
 
-        renderMenuForOrder();
+        renderProductGrid();
         applyRolePermissions();
     }
 
@@ -1196,7 +1183,7 @@
         window.addExtraItem = addExtraItem;
         window.deleteExtra = deleteExtra;
         window.editExtra = editExtra;
-        window.changeCartQty = changeCartQty;
+        window.toggleProduct = toggleProduct;
         window.finalizeOrder = finalizeOrder;
         window.deleteCustomerOrder = deleteCustomerOrder;
         window.editCustomerOrder = editCustomerOrder;
