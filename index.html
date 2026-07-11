@@ -29,6 +29,8 @@
         .btn-danger { background: var(--danger); }
         .btn-success { background: var(--success); }
         .btn-sm { padding: 5px 10px; width: auto; font-size: 12px; }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+        .btn-outline:hover { background: var(--primary); color: white; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
         th, td { border: 1px solid #eee; padding: 8px; text-align: center; }
         .del-btn { background: var(--danger); color: white; border: none; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
@@ -47,6 +49,16 @@
         .exp-header { background: #e3f2fd; padding: 12px; border-radius: 8px; margin-bottom: 10px; border-right: 4px solid var(--primary); }
         .exp-header .total { font-size: 1.3em; color: var(--primary); font-weight: bold; }
         .persian-date { color: #666; font-size: 0.9em; }
+        .order-card { background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .order-card .item-name { font-weight: bold; font-size: 1.1em; }
+        .order-card .item-price { color: var(--primary); font-weight: bold; }
+        .order-card .add-btn { background: var(--success); color: white; border: none; border-radius: 50%; width: 32px; height: 32px; font-size: 20px; cursor: pointer; }
+        .order-card .qty-control { display: flex; align-items: center; gap: 8px; }
+        .order-card .qty-control button { background: #eee; border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 16px; cursor: pointer; }
+        .order-card .qty-control span { font-weight: bold; min-width: 24px; text-align: center; }
+        .cart-summary { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 15px; }
+        .cart-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
+        .cart-total { font-weight: bold; font-size: 1.2em; color: var(--primary); }
         @media (max-width: 480px) { .material-row { flex-direction: column; } .material-row input, .material-row select { width: 100%; } }
     </style>
 </head>
@@ -73,7 +85,7 @@
     </div>
     <div class="nav">
         <button class="nav-btn active" onclick="openPage('home', this)">🏠 خانه</button>
-        <button class="nav-btn" onclick="openPage('orders', this)">🛒 سفارش مشتری</button>
+        <button class="nav-btn" onclick="openPage('orders', this)">🛒 سفارش</button>
         <button class="nav-btn" onclick="openPage('exp', this)">💸 هزینه</button>
         <button class="nav-btn" onclick="openPage('inc', this)">💰 درآمد</button>
         <button class="nav-btn" onclick="openPage('inventory', this)">📦 انبار</button>
@@ -101,20 +113,33 @@
             </div>
         </div>
 
-        <!-- صفحه سفارش مشتری (با منو) -->
+        <!-- صفحه سفارش مشتری (مطابق تصویر) -->
         <div id="orders" class="page">
             <div class="card">
                 <h3>🛒 ثبت سفارش مشتری</h3>
                 <input type="text" id="customerName" placeholder="نام مشتری">
-                <select id="orderProductSelect"><option value="">انتخاب محصول از منو</option></select>
-                <input type="number" id="orderQty" placeholder="تعداد">
-                <input type="number" id="orderPrice" placeholder="قیمت کل سفارش (تومان)" step="1000">
-                <button class="btn btn-success" onclick="saveCustomerOrder()">✅ ثبت سفارش</button>
+                
+                <div style="max-height:400px;overflow-y:auto;margin:10px 0;border:1px solid #eee;border-radius:8px;padding:8px;">
+                    <div id="menuOrderList"></div>
+                </div>
+                
+                <!-- سبد خرید -->
+                <div class="cart-summary" id="cartSummary">
+                    <h4>🧾 سبد خرید</h4>
+                    <div id="cartItems"></div>
+                    <div class="cart-total">مجموع: <span id="cartTotal">0</span> تومان</div>
+                    <button class="btn btn-success" onclick="finalizeOrder()" style="margin-top:10px;">✅ ثبت نهایی سفارش</button>
+                </div>
             </div>
             
-            <!-- منو در پایین سفارشات -->
             <div class="card">
-                <h4>📋 منو (مدیریت محصولات)</h4>
+                <h4>📋 تاریخچه سفارشات</h4>
+                <div id="customerOrderList"></div>
+            </div>
+            
+            <!-- مدیریت منو (فقط برای مدیر) -->
+            <div id="menuManagement" class="card" style="border:2px solid var(--primary);">
+                <h4>📋 مدیریت منو (فقط مدیر)</h4>
                 <div style="background:#e3f2fd;padding:10px;border-radius:8px;margin-bottom:10px;">
                     <h5>➕ افزودن محصول جدید</h5>
                     <input type="text" id="menuProductName" placeholder="نام محصول">
@@ -122,35 +147,24 @@
                     <button class="btn btn-sm btn-success" onclick="addMenuItem()">افزودن به منو</button>
                 </div>
                 <div id="menuList"></div>
-            </div>
-            
-            <!-- اضافه‌های منو -->
-            <div class="card">
-                <h4>➕ اضافه‌های منو</h4>
+                
+                <h5 style="margin-top:15px;">➕ اضافه‌های منو</h5>
                 <div style="background:#fff8e1;padding:8px;border-radius:8px;margin-bottom:8px;">
-                    <h5>🍞 نون اضافه</h5>
-                    <input type="text" id="extraBreadName" placeholder="نام نون" value="نون اضافه" style="display:inline-block;width:60%;">
-                    <input type="number" id="extraBreadPrice" placeholder="قیمت" style="display:inline-block;width:35%;">
+                    <input type="text" id="extraBreadName" placeholder="نام نون" value="نون اضافه" style="display:inline-block;width:45%;">
+                    <input type="number" id="extraBreadPrice" placeholder="قیمت" style="display:inline-block;width:30%;">
                     <button class="btn btn-sm btn-success" onclick="addExtraItem('bread')">ثبت</button>
                 </div>
                 <div style="background:#fce4ec;padding:8px;border-radius:8px;margin-bottom:8px;">
-                    <h5>🧀 پنیر اضافه</h5>
-                    <input type="text" id="extraCheeseName" placeholder="نام پنیر" value="پنیر اضافه" style="display:inline-block;width:60%;">
-                    <input type="number" id="extraCheesePrice" placeholder="قیمت" style="display:inline-block;width:35%;">
+                    <input type="text" id="extraCheeseName" placeholder="نام پنیر" value="پنیر اضافه" style="display:inline-block;width:45%;">
+                    <input type="number" id="extraCheesePrice" placeholder="قیمت" style="display:inline-block;width:30%;">
                     <button class="btn btn-sm btn-success" onclick="addExtraItem('cheese')">ثبت</button>
                 </div>
                 <div style="background:#e8f5e9;padding:8px;border-radius:8px;margin-bottom:8px;">
-                    <h5>🧆 فلافل دونه‌ای</h5>
-                    <input type="text" id="extraFalafelName" placeholder="نام فلافل" value="فلافل دونه‌ای" style="display:inline-block;width:60%;">
-                    <input type="number" id="extraFalafelPrice" placeholder="قیمت هر دونه" style="display:inline-block;width:35%;">
+                    <input type="text" id="extraFalafelName" placeholder="نام فلافل" value="فلافل دونه‌ای" style="display:inline-block;width:45%;">
+                    <input type="number" id="extraFalafelPrice" placeholder="قیمت هر دونه" style="display:inline-block;width:30%;">
                     <button class="btn btn-sm btn-success" onclick="addExtraItem('falafel')">ثبت</button>
                 </div>
                 <div id="extraList"></div>
-            </div>
-            
-            <div class="card">
-                <h4>📋 لیست سفارشات</h4>
-                <div id="customerOrderList"></div>
             </div>
         </div>
 
@@ -160,51 +174,51 @@
                 <h3>📝 ثبت هزینه خرید مواد اولیه</h3>
                 <div class="exp-header">
                     <div class="total">💰 مبلغ کل هزینه: <span id="expTotalDisplay">0</span> تومان</div>
-                    <input type="date" id="expDate" value="" style="width:auto;display:inline-block;max-width:150px;">
+                    <input type="number" id="expTotalAmount" placeholder="مبلغ کل هزینه را وارد کنید" style="border:2px solid var(--primary);font-size:1.1em;padding:12px;">
+                    <input type="date" id="expDate" value="" style="width:auto;display:inline-block;max-width:150px;margin-top:8px;">
                     <span class="persian-date" id="expPersianDate"></span>
                     <input type="number" id="expDays" placeholder="برای چند روز" min="1" value="1" style="width:auto;display:inline-block;max-width:100px;">
                     <input type="text" id="expSupplier" placeholder="خریداری شده توسط" style="width:auto;display:inline-block;max-width:150px;">
-                    <input type="number" id="expTotalAmount" placeholder="مبلغ کل هزینه" style="display:none;">
                 </div>
 
                 <h4>🧾 ریز مواد اولیه</h4>
                 <div id="materialItems">
                     <!-- مواد به صورت فشرده -->
-                    <div class="material-row"><input type="text" value="گوجه فرنگی" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_گوجه_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_گوجه_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="گرم">گرم</option><option value="بسته">بسته</option></select><input type="number" id="mat_گوجه_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_گوجه_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="خیار سبز" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_خیار_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_خیار_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_خیار_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_خیار_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="کلم سفید" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_کلم_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_کلم_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="عدد">عدد</option></select><input type="number" id="mat_کلم_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_کلم_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="پیاز" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_پیاز_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_پیاز_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_پیاز_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_پیاز_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="کاهو" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_کاهو_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_کاهو_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_کاهو_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_کاهو_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="سبزی" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_سبزی_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_سبزی_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_سبزی_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_سبزی_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="قارچ" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_قارچ_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_قارچ_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_قارچ_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_قارچ_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="ادویه" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_ادویه_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_ادویه_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="گرم">گرم</option></select><input type="number" id="mat_ادویه_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_ادویه_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="گوشت چرخ کرده" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_گوشت_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_گوشت_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_گوشت_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_گوشت_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="روغن" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_روغن_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_روغن_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="لیتر">لیتر</option></select><input type="number" id="mat_روغن_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_روغن_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="سویا" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_سویا_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_سویا_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_سویا_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_سویا_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="همبرگر ۶۰٪" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_همبرگر_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_همبرگر_واحد" style="flex:0.3;"><option value="بسته">بسته</option><option value="کیلو">کیلو</option></select><input type="number" id="mat_همبرگر_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_همبرگر_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="هات داگ پنیری" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_هاتداگپنیری_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_هاتداگپنیری_واحد" style="flex:0.3;"><option value="بسته">بسته</option><option value="کیلو">کیلو</option></select><input type="number" id="mat_هاتداگپنیری_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_هاتداگپنیری_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="هات داگ معمولی" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_هاتداگمعمولی_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_هاتداگمعمولی_واحد" style="flex:0.3;"><option value="بسته">بسته</option><option value="کیلو">کیلو</option></select><input type="number" id="mat_هاتداگمعمولی_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_هاتداگمعمولی_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="نخود" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_نخود_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_نخود_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_نخود_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_نخود_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="فلفل دلمه" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_فلفل_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_فلفل_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="عدد">عدد</option></select><input type="number" id="mat_فلفل_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_فلفل_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="کوکتل" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_کوکتل_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_کوکتل_واحد" style="flex:0.3;"><option value="بسته">بسته</option><option value="کیلو">کیلو</option></select><input type="number" id="mat_کوکتل_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_کوکتل_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="کراکف" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_کراکف_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_کراکف_واحد" style="flex:0.3;"><option value="عدد">عدد</option><option value="بسته">بسته</option></select><input type="number" id="mat_کراکف_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_کراکف_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="مرغ" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_مرغ_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_مرغ_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="عدد">عدد</option></select><input type="number" id="mat_مرغ_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_مرغ_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="نوشابه" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_نوشابه_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_نوشابه_واحد" style="flex:0.3;"><option value="بسته">بسته</option><option value="عدد">عدد</option></select><input type="number" id="mat_نوشابه_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_نوشابه_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="آب معدنی" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_آب_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_آب_واحد" style="flex:0.3;"><option value="بسته">بسته</option><option value="عدد">عدد</option></select><input type="number" id="mat_آب_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_آب_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="دوغ" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_دوغ_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_دوغ_واحد" style="flex:0.3;"><option value="بسته">بسته</option><option value="عدد">عدد</option></select><input type="number" id="mat_دوغ_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_دوغ_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="خیارشور" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_خیارشور_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_خیارشور_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_خیارشور_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_خیارشور_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="نون ساندویچی" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_نون_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_نون_واحد" style="flex:0.3;"><option value="بسته">بسته</option><option value="عدد">عدد</option></select><input type="number" id="mat_نون_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_نون_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="سس مایونز" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_سسمایونز_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_سسمایونز_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_سسمایونز_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_سسمایونز_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="سس کچاپ" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_سسکچاپ_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_سسکچاپ_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_سسکچاپ_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_سسکچاپ_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="سس سیر" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_سسسیر_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_سسسیر_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_سسسیر_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_سسسیر_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="سس تند" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_سستند_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_سستند_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_سستند_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_سستند_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="پنیر ورقه ای" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_پنیر_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_پنیر_واحد" style="flex:0.3;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option><option value="ورقه">ورقه</option></select><input type="number" id="mat_پنیر_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_پنیر_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="چسب" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_چسب_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_چسب_واحد" style="flex:0.3;"><option value="عدد">عدد</option><option value="بسته">بسته</option></select><input type="number" id="mat_چسب_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_چسب_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="پلاستیک همبری" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_پلاستیکهمبری_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_پلاستیکهمبری_واحد" style="flex:0.3;"><option value="بسته">بسته</option><option value="عدد">عدد</option></select><input type="number" id="mat_پلاستیکهمبری_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_پلاستیکهمبری_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="پلاستیک بسته‌بندی" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_پلاستیکبسته_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_پلاستیکبسته_واحد" style="flex:0.3;"><option value="بسته">بسته</option><option value="عدد">عدد</option></select><input type="number" id="mat_پلاستیکبسته_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_پلاستیکبسته_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="کاغذ ساندویچ پیچ" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_کاغذ_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_کاغذ_واحد" style="flex:0.3;"><option value="بسته">بسته</option><option value="عدد">عدد</option></select><input type="number" id="mat_کاغذ_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_کاغذ_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="شارژ گاز" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_گاز_وزن" placeholder="وزن" style="flex:0.4;"><select id="mat_گاز_واحد" style="flex:0.3;"><option value="عدد">عدد</option><option value="کیلو">کیلو</option></select><input type="number" id="mat_گاز_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_گاز_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
-                    <div class="material-row"><input type="text" value="کرایه ماشین" readonly style="flex:0.6;background:#f5f5f5;"><input type="number" id="mat_کرایه_وزن" placeholder="تعداد" style="flex:0.4;"><select id="mat_کرایه_واحد" style="flex:0.3;"><option value="بار">بار</option><option value="روز">روز</option></select><input type="number" id="mat_کرایه_قیمت واحد" placeholder="قیمت واحد" style="flex:0.4;"><input type="number" id="mat_کرایه_قیمت کل" placeholder="قیمت کل" style="flex:0.4;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="گوجه فرنگی" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_گوجه_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_گوجه_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="گرم">گرم</option><option value="بسته">بسته</option></select><input type="number" id="mat_گوجه_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_گوجه_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="خیار سبز" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_خیار_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_خیار_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_خیار_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_خیار_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="کلم سفید" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_کلم_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_کلم_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="عدد">عدد</option></select><input type="number" id="mat_کلم_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_کلم_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="پیاز" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_پیاز_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_پیاز_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_پیاز_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_پیاز_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="کاهو" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_کاهو_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_کاهو_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_کاهو_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_کاهو_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="سبزی" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_سبزی_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_سبزی_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_سبزی_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_سبزی_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="قارچ" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_قارچ_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_قارچ_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_قارچ_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_قارچ_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="ادویه" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_ادویه_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_ادویه_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="گرم">گرم</option></select><input type="number" id="mat_ادویه_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_ادویه_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="گوشت چرخ کرده" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_گوشت_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_گوشت_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_گوشت_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_گوشت_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="روغن" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_روغن_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_روغن_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="لیتر">لیتر</option></select><input type="number" id="mat_روغن_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_روغن_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="سویا" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_سویا_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_سویا_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_سویا_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_سویا_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="همبرگر ۶۰٪" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_همبرگر_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_همبرگر_واحد" style="flex:0.25;"><option value="بسته">بسته</option><option value="کیلو">کیلو</option></select><input type="number" id="mat_همبرگر_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_همبرگر_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="هات داگ پنیری" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_هاتداگپنیری_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_هاتداگپنیری_واحد" style="flex:0.25;"><option value="بسته">بسته</option><option value="کیلو">کیلو</option></select><input type="number" id="mat_هاتداگپنیری_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_هاتداگپنیری_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="هات داگ معمولی" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_هاتداگمعمولی_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_هاتداگمعمولی_واحد" style="flex:0.25;"><option value="بسته">بسته</option><option value="کیلو">کیلو</option></select><input type="number" id="mat_هاتداگمعمولی_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_هاتداگمعمولی_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="نخود" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_نخود_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_نخود_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_نخود_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_نخود_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="فلفل دلمه" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_فلفل_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_فلفل_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="عدد">عدد</option></select><input type="number" id="mat_فلفل_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_فلفل_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="کوکتل" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_کوکتل_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_کوکتل_واحد" style="flex:0.25;"><option value="بسته">بسته</option><option value="کیلو">کیلو</option></select><input type="number" id="mat_کوکتل_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_کوکتل_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="کراکف" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_کراکف_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_کراکف_واحد" style="flex:0.25;"><option value="عدد">عدد</option><option value="بسته">بسته</option></select><input type="number" id="mat_کراکف_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_کراکف_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="مرغ" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_مرغ_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_مرغ_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="عدد">عدد</option></select><input type="number" id="mat_مرغ_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_مرغ_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="نوشابه" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_نوشابه_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_نوشابه_واحد" style="flex:0.25;"><option value="بسته">بسته</option><option value="عدد">عدد</option></select><input type="number" id="mat_نوشابه_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_نوشابه_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="آب معدنی" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_آب_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_آب_واحد" style="flex:0.25;"><option value="بسته">بسته</option><option value="عدد">عدد</option></select><input type="number" id="mat_آب_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_آب_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="دوغ" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_دوغ_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_دوغ_واحد" style="flex:0.25;"><option value="بسته">بسته</option><option value="عدد">عدد</option></select><input type="number" id="mat_دوغ_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_دوغ_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="خیارشور" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_خیارشور_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_خیارشور_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_خیارشور_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_خیارشور_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="نون ساندویچی" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_نون_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_نون_واحد" style="flex:0.25;"><option value="بسته">بسته</option><option value="عدد">عدد</option></select><input type="number" id="mat_نون_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_نون_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="سس مایونز" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_سسمایونز_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_سسمایونز_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_سسمایونز_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_سسمایونز_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="سس کچاپ" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_سسکچاپ_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_سسکچاپ_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_سسکچاپ_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_سسکچاپ_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="سس سیر" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_سسسیر_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_سسسیر_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_سسسیر_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_سسسیر_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="سس تند" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_سستند_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_سستند_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option></select><input type="number" id="mat_سستند_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_سستند_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="پنیر ورقه ای" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_پنیر_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_پنیر_واحد" style="flex:0.25;"><option value="کیلو">کیلو</option><option value="بسته">بسته</option><option value="ورقه">ورقه</option></select><input type="number" id="mat_پنیر_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_پنیر_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="چسب" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_چسب_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_چسب_واحد" style="flex:0.25;"><option value="عدد">عدد</option><option value="بسته">بسته</option></select><input type="number" id="mat_چسب_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_چسب_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="پلاستیک همبری" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_پلاستیکهمبری_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_پلاستیکهمبری_واحد" style="flex:0.25;"><option value="بسته">بسته</option><option value="عدد">عدد</option></select><input type="number" id="mat_پلاستیکهمبری_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_پلاستیکهمبری_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="پلاستیک بسته‌بندی" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_پلاستیکبسته_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_پلاستیکبسته_واحد" style="flex:0.25;"><option value="بسته">بسته</option><option value="عدد">عدد</option></select><input type="number" id="mat_پلاستیکبسته_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_پلاستیکبسته_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="کاغذ ساندویچ پیچ" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_کاغذ_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_کاغذ_واحد" style="flex:0.25;"><option value="بسته">بسته</option><option value="عدد">عدد</option></select><input type="number" id="mat_کاغذ_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_کاغذ_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="شارژ گاز" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_گاز_وزن" placeholder="وزن" style="flex:0.3;"><select id="mat_گاز_واحد" style="flex:0.25;"><option value="عدد">عدد</option><option value="کیلو">کیلو</option></select><input type="number" id="mat_گاز_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_گاز_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
+                    <div class="material-row"><input type="text" value="کرایه ماشین" readonly style="flex:0.5;background:#f5f5f5;font-size:11px;"><input type="number" id="mat_کرایه_وزن" placeholder="تعداد" style="flex:0.3;"><select id="mat_کرایه_واحد" style="flex:0.25;"><option value="بار">بار</option><option value="روز">روز</option></select><input type="number" id="mat_کرایه_قیمت واحد" placeholder="قیمت واحد" style="flex:0.3;"><input type="number" id="mat_کرایه_قیمت کل" placeholder="قیمت کل" style="flex:0.3;background:#e8f5e9;"></div>
                 </div>
 
                 <div style="margin-top:15px;border-top:2px solid #ddd;padding-top:15px;">
@@ -340,6 +354,7 @@
     };
     let currentUser = null;
     let currentRole = 'admin';
+    let cart = []; // سبد خرید موقت
 
     // ===== تبدیل تاریخ میلادی به شمسی =====
     function toPersianDate(dateStr) {
@@ -347,7 +362,6 @@
         const d = new Date(dateStr);
         const persianMonths = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
         const days = ['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'];
-        // تبدیل ساده (برای نمایش)
         const year = d.getFullYear() - 621;
         const month = d.getMonth();
         const day = d.getDate();
@@ -415,6 +429,15 @@
                 btn.classList.remove('disabled');
             }
         });
+        // مدیریت منو فقط برای مدیر
+        const menuManagement = document.getElementById('menuManagement');
+        if (menuManagement) {
+            if (isAdmin) {
+                menuManagement.style.display = 'block';
+            } else {
+                menuManagement.style.display = 'none';
+            }
+        }
         if (currentRole === 'staff') {
             const activePage = document.querySelector('.page.active');
             if (activePage && !['home', 'orders', 'exp', 'cr'].includes(activePage.id)) {
@@ -438,7 +461,7 @@
         updateUI();
     }
 
-    // ===== مدیریت منو =====
+    // ===== مدیریت منو (فقط مدیر) =====
     function addMenuItem() {
         if (currentRole !== 'admin') { alert('فقط مدیر میتواند محصول اضافه کند'); return; }
         const name = document.getElementById('menuProductName').value.trim();
@@ -510,35 +533,120 @@
         save();
     }
 
-    // ===== ثبت سفارش مشتری =====
-    function saveCustomerOrder() {
+    // ===== سفارش مشتری (مطابق تصویر) =====
+    function renderMenuForOrder() {
+        const container = document.getElementById('menuOrderList');
+        let html = '';
+        db.products.forEach(p => {
+            const inCart = cart.find(c => c.productId === p.id);
+            const qty = inCart ? inCart.qty : 0;
+            html += `
+                <div class="order-card">
+                    <div>
+                        <div class="item-name">${p.name}</div>
+                        <div class="item-price">+ ${p.price.toLocaleString()} تومان</div>
+                    </div>
+                    <div class="qty-control">
+                        <button onclick="changeCartQty(${p.id}, -1)">−</button>
+                        <span>${qty}</span>
+                        <button onclick="changeCartQty(${p.id}, 1)">+</button>
+                    </div>
+                </div>
+            `;
+        });
+        // اضافه‌ها
+        db.extras.forEach(e => {
+            const inCart = cart.find(c => c.productId === e.id && c.isExtra);
+            const qty = inCart ? inCart.qty : 0;
+            html += `
+                <div class="order-card" style="background:#f5f5f5;">
+                    <div>
+                        <div class="item-name">${e.name}</div>
+                        <div class="item-price">+ ${e.price.toLocaleString()} تومان</div>
+                    </div>
+                    <div class="qty-control">
+                        <button onclick="changeCartQty(${e.id}, -1, true)">−</button>
+                        <span>${qty}</span>
+                        <button onclick="changeCartQty(${e.id}, 1, true)">+</button>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html || '<p>هیچ محصولی در منو ثبت نشده</p>';
+        updateCartUI();
+    }
+
+    function changeCartQty(productId, delta, isExtra = false) {
+        let item = cart.find(c => c.productId === productId && c.isExtra === isExtra);
+        if (item) {
+            item.qty += delta;
+            if (item.qty <= 0) {
+                cart = cart.filter(c => !(c.productId === productId && c.isExtra === isExtra));
+            }
+        } else if (delta > 0) {
+            let name, price;
+            if (isExtra) {
+                const extra = db.extras.find(e => e.id === productId);
+                if (extra) { name = extra.name; price = extra.price; }
+            } else {
+                const product = db.products.find(p => p.id === productId);
+                if (product) { name = product.name; price = product.price; }
+            }
+            if (name && price) {
+                cart.push({ productId, name, price, qty: 1, isExtra });
+            }
+        }
+        renderMenuForOrder();
+    }
+
+    function updateCartUI() {
+        const container = document.getElementById('cartItems');
+        let html = '';
+        let total = 0;
+        cart.forEach(c => {
+            const subtotal = c.price * c.qty;
+            total += subtotal;
+            html += `<div class="cart-item">
+                <span>${c.name} × ${c.qty}</span>
+                <span>${subtotal.toLocaleString()} تومان</span>
+            </div>`;
+        });
+        container.innerHTML = html || '<p>سبد خرید خالی است</p>';
+        document.getElementById('cartTotal').innerText = total.toLocaleString();
+    }
+
+    function finalizeOrder() {
         const customer = document.getElementById('customerName').value.trim();
-        const productId = parseInt(document.getElementById('orderProductSelect').value);
-        const qty = parseInt(document.getElementById('orderQty').value);
-        const price = parseInt(document.getElementById('orderPrice').value);
         if (!customer) { alert('نام مشتری را وارد کنید'); return; }
-        if (!productId) { alert('محصول را انتخاب کنید'); return; }
-        if (!qty || qty < 1) { alert('تعداد معتبر وارد کنید'); return; }
-        if (!price || price < 0) { alert('قیمت کل را وارد کنید'); return; }
-        const product = db.products.find(p => p.id === productId);
-        if (!product) { alert('محصول یافت نشد'); return; }
+        if (cart.length === 0) { alert('سبد خرید خالی است'); return; }
+        const total = cart.reduce((sum, c) => sum + (c.price * c.qty), 0);
         
         db.customerOrders.push({
             id: Date.now(),
             customer,
-            productId,
-            productName: product.name,
-            qty,
-            price,
+            items: JSON.parse(JSON.stringify(cart)),
+            total: total,
             date: new Date().toISOString().split('T')[0],
             dayString: new Date().toDateString(),
             createdAt: Date.now()
         });
+        
+        // ثبت درآمد به صورت خودکار
+        db.incomes.push({
+            id: Date.now(),
+            amount: total,
+            date: new Date().toISOString().split('T')[0],
+            days: 1,
+            dayString: new Date().toDateString(),
+            createdAt: Date.now()
+        });
+        
+        cart = [];
         save();
-        alert('✅ سفارش ثبت شد');
+        alert('✅ سفارش با موفقیت ثبت شد');
         document.getElementById('customerName').value = '';
-        document.getElementById('orderQty').value = '';
-        document.getElementById('orderPrice').value = '';
+        renderMenuForOrder();
+        updateUI();
     }
 
     function deleteCustomerOrder(id) {
@@ -554,11 +662,11 @@
         }
         const item = db.customerOrders.find(o => o.id === id);
         if (!item) return;
-        const newQty = prompt('تعداد جدید:', item.qty);
-        const newPrice = prompt('قیمت جدید:', item.price);
-        if (newQty !== null && !isNaN(newQty) && newQty > 0) item.qty = parseInt(newQty);
-        if (newPrice !== null && !isNaN(newPrice) && newPrice >= 0) item.price = parseInt(newPrice);
-        save();
+        const newTotal = prompt('مبلغ جدید:', item.total);
+        if (newTotal !== null && !isNaN(newTotal) && newTotal >= 0) {
+            item.total = parseInt(newTotal);
+            save();
+        }
     }
 
     // ===== ثبت کامل هزینه =====
@@ -713,6 +821,15 @@
             }
         });
         return alerts;
+    }
+
+    function clearProductAlert(id) {
+        if (currentRole !== 'admin') { alert('فقط مدیر'); return; }
+        const product = db.products.find(p => p.id === id);
+        if (product) {
+            product.stock = 999;
+            save();
+        }
     }
 
     // ===== گزارش‌ها =====
@@ -881,7 +998,7 @@
         document.getElementById('inventoryAlerts').innerHTML = alertHtml;
         document.getElementById('inventoryAlertList').innerHTML = alertHtml;
 
-        // لیست منو
+        // لیست منو (مدیریت)
         let menuHtml = '';
         db.products.forEach(p => {
             menuHtml += `<div class="menu-item">
@@ -911,8 +1028,9 @@
         // لیست سفارشات
         let orderHtml = '';
         db.customerOrders.slice().reverse().forEach(o => {
+            let itemsList = o.items ? o.items.map(i => `${i.name}×${i.qty}`).join('، ') : '';
             orderHtml += `<div class="order-item">
-                <div><strong>${o.customer}</strong> - ${o.productName} × ${o.qty} = ${o.price.toLocaleString()} تومان</div>
+                <div><strong>${o.customer}</strong> - ${itemsList} = ${o.total.toLocaleString()} تومان</div>
                 <div style="font-size:12px;color:#888;">${toPersianDate(o.date)}</div>
                 <div style="margin-top:5px;">
                     <button class="edit-btn btn-sm" onclick="editCustomerOrder(${o.id})">✏️</button>
@@ -967,17 +1085,6 @@
         });
         document.getElementById('inventoryList').innerHTML = invHtml || '<p>هیچ محصولی در انبار نیست</p>';
 
-        // بروزرسانی انتخابگر محصولات
-        const sel = document.getElementById('orderProductSelect');
-        if (sel) {
-            const currentVal = sel.value;
-            sel.innerHTML = '<option value="">انتخاب محصول از منو</option>';
-            db.products.forEach(p => {
-                sel.innerHTML += `<option value="${p.id}">${p.name} (${p.price.toLocaleString()} تومان)</option>`;
-            });
-            if (currentVal) sel.value = currentVal;
-        }
-
         // جدول نسیه
         let creditHtml = '';
         db.credits.forEach(c => {
@@ -994,15 +1101,17 @@
         document.getElementById('adminPassDisplay').innerText = db.settings.adminPass;
         document.getElementById('stockAlertThreshold').value = db.settings.alertThreshold || 5;
         
-        // تاریخ شمسی در هزینه
         const expDate = document.getElementById('expDate').value;
         if (expDate) {
             document.getElementById('expPersianDate').innerText = toPersianDate(expDate);
         }
         
-        // نمایش مبلغ کل
         const totalAmount = parseInt(document.getElementById('expTotalAmount').value) || 0;
         document.getElementById('expTotalDisplay').innerText = totalAmount.toLocaleString();
+
+        // رندر منو برای سفارش
+        renderMenuForOrder();
+        applyRolePermissions();
     }
 
     // ===== حذف و ویرایش =====
@@ -1021,15 +1130,6 @@
                 item.totalAmount = parseInt(newTotal);
                 save();
             }
-        }
-    }
-
-    function clearProductAlert(id) {
-        if (currentRole !== 'admin') { alert('فقط مدیر'); return; }
-        const product = db.products.find(p => p.id === id);
-        if (product) {
-            product.stock = 999;
-            save();
         }
     }
 
@@ -1091,9 +1191,10 @@
         window.addExtraItem = addExtraItem;
         window.deleteExtra = deleteExtra;
         window.editExtra = editExtra;
-        window.saveCustomerOrder = saveCustomerOrder;
-        window.editCustomerOrder = editCustomerOrder;
+        window.changeCartQty = changeCartQty;
+        window.finalizeOrder = finalizeOrder;
         window.deleteCustomerOrder = deleteCustomerOrder;
+        window.editCustomerOrder = editCustomerOrder;
         window.saveFullExpense = saveFullExpense;
         window.addIncome = addIncome;
         window.editIncome = editIncome;
