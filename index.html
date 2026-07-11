@@ -52,13 +52,14 @@
         .order-card { background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .order-card .item-name { font-weight: bold; font-size: 1.1em; }
         .order-card .item-price { color: var(--primary); font-weight: bold; }
-        .order-card .add-btn { background: var(--success); color: white; border: none; border-radius: 50%; width: 32px; height: 32px; font-size: 20px; cursor: pointer; }
         .order-card .qty-control { display: flex; align-items: center; gap: 8px; }
         .order-card .qty-control button { background: #eee; border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 16px; cursor: pointer; }
+        .order-card .qty-control button:hover { background: #ddd; }
         .order-card .qty-control span { font-weight: bold; min-width: 24px; text-align: center; }
         .cart-summary { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 15px; }
         .cart-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
         .cart-total { font-weight: bold; font-size: 1.2em; color: var(--primary); }
+        .menu-management { border: 2px solid var(--primary); }
         @media (max-width: 480px) { .material-row { flex-direction: column; } .material-row input, .material-row select { width: 100%; } }
     </style>
 </head>
@@ -86,6 +87,7 @@
     <div class="nav">
         <button class="nav-btn active" onclick="openPage('home', this)">🏠 خانه</button>
         <button class="nav-btn" onclick="openPage('orders', this)">🛒 سفارش</button>
+        <button class="nav-btn" onclick="openPage('menu', this)">📋 منو</button>
         <button class="nav-btn" onclick="openPage('exp', this)">💸 هزینه</button>
         <button class="nav-btn" onclick="openPage('inc', this)">💰 درآمد</button>
         <button class="nav-btn" onclick="openPage('inventory', this)">📦 انبار</button>
@@ -113,7 +115,7 @@
             </div>
         </div>
 
-        <!-- صفحه سفارش مشتری (مطابق تصویر) -->
+        <!-- صفحه سفارش مشتری (با منو برای انتخاب) -->
         <div id="orders" class="page">
             <div class="card">
                 <h3>🛒 ثبت سفارش مشتری</h3>
@@ -136,10 +138,12 @@
                 <h4>📋 تاریخچه سفارشات</h4>
                 <div id="customerOrderList"></div>
             </div>
-            
-            <!-- مدیریت منو (فقط برای مدیر) -->
-            <div id="menuManagement" class="card" style="border:2px solid var(--primary);">
-                <h4>📋 مدیریت منو (فقط مدیر)</h4>
+        </div>
+
+        <!-- صفحه منو (فقط مدیر) -->
+        <div id="menu" class="page">
+            <div class="card menu-management">
+                <h3>📋 مدیریت منو (فقط مدیر)</h3>
                 <div style="background:#e3f2fd;padding:10px;border-radius:8px;margin-bottom:10px;">
                     <h5>➕ افزودن محصول جدید</h5>
                     <input type="text" id="menuProductName" placeholder="نام محصول">
@@ -354,7 +358,7 @@
     };
     let currentUser = null;
     let currentRole = 'admin';
-    let cart = []; // سبد خرید موقت
+    let cart = [];
 
     // ===== تبدیل تاریخ میلادی به شمسی =====
     function toPersianDate(dateStr) {
@@ -429,13 +433,13 @@
                 btn.classList.remove('disabled');
             }
         });
-        // مدیریت منو فقط برای مدیر
-        const menuManagement = document.getElementById('menuManagement');
-        if (menuManagement) {
+        // صفحه منو فقط برای مدیر
+        const menuPage = document.getElementById('menu');
+        if (menuPage) {
             if (isAdmin) {
-                menuManagement.style.display = 'block';
+                menuPage.style.display = 'block';
             } else {
-                menuManagement.style.display = 'none';
+                menuPage.style.display = 'none';
             }
         }
         if (currentRole === 'staff') {
@@ -454,6 +458,10 @@
             alert('همکار فقط دسترسی به سفارش مشتری، هزینه و نسیه/پیش دارد.');
             return;
         }
+        if (p === 'menu' && currentRole !== 'admin') {
+            alert('صفحه منو فقط برای مدیر قابل دسترسی است.');
+            return;
+        }
         document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(x => x.classList.remove('active'));
         document.getElementById(p).classList.add('active'); 
@@ -461,7 +469,7 @@
         updateUI();
     }
 
-    // ===== مدیریت منو (فقط مدیر) =====
+    // ===== مدیریت منو =====
     function addMenuItem() {
         if (currentRole !== 'admin') { alert('فقط مدیر میتواند محصول اضافه کند'); return; }
         const name = document.getElementById('menuProductName').value.trim();
@@ -533,12 +541,12 @@
         save();
     }
 
-    // ===== سفارش مشتری (مطابق تصویر) =====
+    // ===== سفارش مشتری =====
     function renderMenuForOrder() {
         const container = document.getElementById('menuOrderList');
         let html = '';
         db.products.forEach(p => {
-            const inCart = cart.find(c => c.productId === p.id);
+            const inCart = cart.find(c => c.productId === p.id && !c.isExtra);
             const qty = inCart ? inCart.qty : 0;
             html += `
                 <div class="order-card">
@@ -547,9 +555,9 @@
                         <div class="item-price">+ ${p.price.toLocaleString()} تومان</div>
                     </div>
                     <div class="qty-control">
-                        <button onclick="changeCartQty(${p.id}, -1)">−</button>
+                        <button onclick="changeCartQty(${p.id}, -1, false)">−</button>
                         <span>${qty}</span>
-                        <button onclick="changeCartQty(${p.id}, 1)">+</button>
+                        <button onclick="changeCartQty(${p.id}, 1, false)">+</button>
                     </div>
                 </div>
             `;
@@ -631,7 +639,6 @@
             createdAt: Date.now()
         });
         
-        // ثبت درآمد به صورت خودکار
         db.incomes.push({
             id: Date.now(),
             amount: total,
@@ -998,7 +1005,7 @@
         document.getElementById('inventoryAlerts').innerHTML = alertHtml;
         document.getElementById('inventoryAlertList').innerHTML = alertHtml;
 
-        // لیست منو (مدیریت)
+        // لیست منو
         let menuHtml = '';
         db.products.forEach(p => {
             menuHtml += `<div class="menu-item">
@@ -1109,7 +1116,6 @@
         const totalAmount = parseInt(document.getElementById('expTotalAmount').value) || 0;
         document.getElementById('expTotalDisplay').innerText = totalAmount.toLocaleString();
 
-        // رندر منو برای سفارش
         renderMenuForOrder();
         applyRolePermissions();
     }
@@ -1181,7 +1187,6 @@
         updateUI();
         showDailyReport();
 
-        // ثبت توابع در window
         window.login = login;
         window.logout = logout;
         window.openPage = openPage;
